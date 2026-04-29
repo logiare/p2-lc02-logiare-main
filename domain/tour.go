@@ -9,6 +9,6 @@ type TourRepository interface {
 	GetTourEarnings() ([]tours.TourEarningsResponse, error)
 }
 
-type ReportUseCase interface {
+type TourHandler interface {
 	GetTourEarnings(ctx context.Context) ([]tours.TourEarningsResponse, error)
 }
