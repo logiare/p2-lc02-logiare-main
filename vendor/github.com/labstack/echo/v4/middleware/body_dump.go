@@ -66,12 +66,8 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 
 			// Request
 			reqBody := []byte{}
-			if c.Request().Body != nil {
-				var readErr error
-				reqBody, readErr = io.ReadAll(c.Request().Body)
-				if readErr != nil {
-					return readErr
-				}
+			if c.Request().Body != nil { // Read
+				reqBody, _ = io.ReadAll(c.Request().Body)
 			}
 			c.Request().Body = io.NopCloser(bytes.NewBuffer(reqBody)) // Reset
 
@@ -102,14 +98,14 @@ func (w *bodyDumpResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *bodyDumpResponseWriter) Flush() {
-	err := http.NewResponseController(w.ResponseWriter).Flush()
+	err := responseControllerFlush(w.ResponseWriter)
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(errors.New("response writer flushing is not supported"))
 	}
 }
 
 func (w *bodyDumpResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return http.NewResponseController(w.ResponseWriter).Hijack()
+	return responseControllerHijack(w.ResponseWriter)
 }
 
 func (w *bodyDumpResponseWriter) Unwrap() http.ResponseWriter {

@@ -4,7 +4,6 @@
 package middleware
 
 import (
-	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -192,7 +191,7 @@ NewRateLimiterMemoryStoreWithConfig returns an instance of RateLimiterMemoryStor
 with the provided configuration. Rate must be provided. Burst will be set to the rounded down value of
 the configured rate if not provided or set to 0.
 
-The built-in memory store is usually capable for modest loads. For higher loads other
+The build-in memory store is usually capable for modest loads. For higher loads other
 store implementations should be considered.
 
 Characteristics:
@@ -216,7 +215,7 @@ func NewRateLimiterMemoryStoreWithConfig(config RateLimiterMemoryStoreConfig) (s
 		store.expiresIn = DefaultRateLimiterMemoryStoreConfig.ExpiresIn
 	}
 	if config.Burst == 0 {
-		store.burst = int(math.Max(1, math.Ceil(float64(config.Rate))))
+		store.burst = int(config.Rate)
 	}
 	store.visitors = make(map[string]*Visitor)
 	store.timeNow = time.Now
@@ -250,9 +249,8 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 	if now.Sub(store.lastCleanup) > store.expiresIn {
 		store.cleanupStaleVisitors()
 	}
-	allowed := limiter.AllowN(now, 1)
 	store.mutex.Unlock()
-	return allowed, nil
+	return limiter.AllowN(store.timeNow(), 1), nil
 }
 
 /*

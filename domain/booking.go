@@ -7,17 +7,20 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// BookingRepository defines the data-layer contract for bookings
 type BookingRepository interface {
 	GetBookingsByCustomerID(customerID int) ([]bookings.BookingResponse, error)
 	GetUnpaidBookingsByCustomerID(customerID int) ([]bookings.BookingResponse, error)
-	GetCustomerIDByUserId(userID int) (int, error)
+	GetCustomerIDByUserID(userID int) (int, error)
 }
 
-type BookingUsecase interface {
-	GetAllBookings(ctx context.Context, userId int) ([]bookings.BookingResponse, error)
-	GetUnpaidBookings(ctx context.Context, userId int) ([]bookings.BookingResponse, error)
+// BookingUseCase defines the business-logic contract for bookings
+type BookingUseCase interface {
+	GetAllBookings(ctx context.Context, userID int) ([]bookings.BookingResponse, error)
+	GetUnpaidBookings(ctx context.Context, userID int) ([]bookings.BookingResponse, error)
 }
 
+// BookingHandler defines the HTTP-layer contract for bookings
 type BookingHandler interface {
 	GetAllBookings(c echo.Context) error
 	GetUnpaidBookings(c echo.Context) error

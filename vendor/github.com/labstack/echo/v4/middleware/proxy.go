@@ -5,7 +5,6 @@ package middleware
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"math/rand"
@@ -131,21 +130,7 @@ var DefaultProxyConfig = ProxyConfig{
 	ContextKey: "target",
 }
 
-func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
-	var dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
-	if transport, ok := config.Transport.(*http.Transport); ok {
-		if transport.TLSClientConfig != nil {
-			d := tls.Dialer{
-				Config: transport.TLSClientConfig,
-			}
-			dialFunc = d.DialContext
-		}
-	}
-	if dialFunc == nil {
-		var d net.Dialer
-		dialFunc = d.DialContext
-	}
-
+func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		in, _, err := c.Response().Hijack()
 		if err != nil {
@@ -153,7 +138,8 @@ func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 			return
 		}
 		defer in.Close()
-		out, err := dialFunc(c.Request().Context(), "tcp", t.URL.Host)
+
+		out, err := net.Dial("tcp", t.URL.Host)
 		if err != nil {
 			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
 			return
@@ -169,21 +155,15 @@ func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 
 		errCh := make(chan error, 2)
 		cp := func(dst io.Writer, src io.Reader) {
-			_, copyErr := io.Copy(dst, src)
-			errCh <- copyErr
+			_, err = io.Copy(dst, src)
+			errCh <- err
 		}
 
 		go cp(out, in)
 		go cp(in, out)
-
-		// Wait for BOTH goroutines to complete
-		err1 := <-errCh
-		err2 := <-errCh
-
-		if err1 != nil && err1 != io.EOF {
-			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err1, t.URL))
-		} else if err2 != nil && err2 != io.EOF {
-			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err2, t.URL))
+		err = <-errCh
+		if err != nil && err != io.EOF {
+			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err, t.URL))
 		}
 	})
 }
@@ -385,7 +365,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				// Proxy
 				switch {
 				case c.IsWebSocket():
-					proxyRaw(tgt, c, config).ServeHTTP(res, req)
+					proxyRaw(tgt, c).ServeHTTP(res, req)
 				default: // even SSE requests
 					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 				}
