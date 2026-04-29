@@ -1,0 +1,316 @@
+openapi: "3.0.0"
+info:
+  title: "FTGO Phase 2 Livecode 2 API Contract"
+  description: "Pastikan semua endpoint pada livecode mengikuti ketentuan yang tercantum pada dokumen ini. Tanyakan pada instruktur/tim akademik yang bertugas jika ada hal yang perlu diklarifikasi dan ditanyakan. Kesalahan pemahaman requirement bisa mengakibatkan pengurangan nilai livecode."
+  version: "1.0"
+  contact:
+    name: "FTGO Academic Team"
+servers:
+  - url: "http://localhost:8080"
+    description: "development/livecode"
+
+paths:
+  '/users/register':
+    post:
+      tags:
+        - user
+      summary: "register user baru"
+      description: "register user baru ke dalam aplikasi"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/registerUser"
+      responses:
+        201:
+          description: "response berhasil registrasi user baru"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user_id:
+                    type: "integer"
+                    example: 1
+                  email:
+                    type: "string"
+                    example: "john.doe@example.com"
+        400:
+          $ref: "#/components/responses/badRequest"
+        500:
+          $ref: "#/components/responses/internalServerError"
+          
+  '/users/login':
+    post:
+      tags:
+        - user
+      summary: "login user yang sudah terdaftar"
+      description: "login user yang sebelumnya sudah berhasil melakukan registrasi, akan membalikan data akses token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/loginUser"
+      responses:
+        200:
+          description: "response berhasil login"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  token:
+                    type: "string"
+                    example: "jwt_token_value"
+        400:
+          $ref: "#/components/responses/badRequest"
+        404:
+          $ref: "#/components/responses/notFound"
+        500:
+          $ref: "#/components/responses/internalServerError"
+
+  '/bookings':
+    get:
+      tags:
+        - booking
+      summary: "menampilkan data bookings"
+      description: "menampilkan data booking yang dibuat sesuai dengan user yang sedang login (akses token pada headers)"
+      parameters:
+        - $ref: "#/components/parameters/authorization"
+      security:
+        - ApiKeyAuth: []
+      responses:
+        200:
+          description: "response berhasil"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: '#/components/schemas/booking'
+        404:
+          $ref: "#/components/responses/notFound"
+        500:
+          $ref: "#/components/responses/internalServerError"
+
+  '/bookings/unpaid':
+    get:
+      tags:
+        - booking
+      summary: "menampilkan data bookings yang belum dibayar"
+      description: "menampilkan data booking yang belum dibayar sesuai dengan user yang sedang login (akses token pada headers)"
+      parameters:
+        - $ref: "#/components/parameters/authorization"
+      security:
+        - ApiKeyAuth: []
+      responses:
+        200:
+          description: "response berhasil"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: '#/components/schemas/booking'
+        404:
+          $ref: "#/components/responses/notFound"
+        500:
+          $ref: "#/components/responses/internalServerError"
+
+  '/tours/earning':
+    get:
+      tags:
+        - tours
+      summary: "menampilkan data pendapatan tiap tour"
+      description: "menampilkan data pendapatan tiap tour yang tersedia"
+      parameters:
+        - $ref: "#/components/parameters/authorization"
+      security:
+        - ApiKeyAuth: []
+      responses:
+        200:
+          description: "response berhasil"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: '#/components/schemas/tourEarnings'
+        404:
+          $ref: "#/components/responses/notFound"
+        500:
+          $ref: "#/components/responses/internalServerError"
+
+  '/reports/total-customers':
+    get:
+      tags:
+        - reports
+      summary: "menampilkan total pelanggan yang terdaftar"
+      description: "menampilkan jumlah total pelanggan yang terdaftar di platform"
+      parameters:
+        - $ref: "#/components/parameters/authorization"
+      security:
+        - ApiKeyAuth: []
+      responses:
+        200:
+          description: "response berhasil"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  total_customers:
+                    type: "integer"
+                    example: 150
+        500:
+          $ref: "#/components/responses/internalServerError"
+
+  '/reports/bookings-per-tour':
+    get:
+      tags:
+        - reports
+      summary: "menampilkan jumlah total pemesanan per tur"
+      description: "menampilkan jumlah total pemesanan untuk setiap tur yang tersedia di platform"
+      parameters:
+        - $ref: "#/components/parameters/authorization"
+      security:
+        - ApiKeyAuth: []
+      responses:
+        200:
+          description: "response berhasil"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    tour_name:
+                      type: "string"
+                      example: "Adventure to Mount Everest"
+                    total_bookings:
+                      type: "integer"
+                      example: 20
+        404:
+          $ref: "#/components/responses/notFound"
+        500:
+          $ref: "#/components/responses/internalServerError"
+
+components:
+  parameters:
+    authorization:
+      name: Authorization
+      description: "authorization key yang didapatkan ketika berhasil login"
+      in: header
+      schema:
+        type: "string"
+
+  schemas:
+    registerUser:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          default: "John Doe"
+        email:
+          type: "string"
+          default: "john.doe@example.com"
+        password:
+          type: "string"
+          default: "example_password"
+        phone_number:
+          type: "string"
+          default: "0123456789"
+        address:
+          type: "string"
+          default: "123 Elm Street"
+      required:
+        - name
+        - email
+        - password
+        - phone_number
+        - address
+
+    loginUser:
+      type: "object"
+      properties:
+        email:
+          type: "string"
+          default: "john.doe@example.com"
+        password:
+          type: "string"
+          default: "example_password"
+      required:
+        - email
+        - password
+
+    booking:
+      type: "object"
+      properties:
+        booking_id:
+          type: "integer"
+          example: 1
+        tour_name:
+          type: "string"
+          example: "Adventure to Mount Everest"
+        booking_date:
+          type: "string"
+          format: "date"
+          example: "2024-08-16"
+        booking_status:
+          type: "string"
+          example: "Completed"
+
+    tourEarnings:
+      type: "object"
+      properties:
+        tour_id:
+          type: "integer"
+          example: 1
+        tour_name:
+          type: "string"
+          example: "Adventure to Mount Everest"
+        total_earnings:
+          type: "number"
+          format: "float"
+          example: 5000000
+
+  responses:
+    internalServerError:
+      description: "internal server error; semua error lain seperti error bad request dan error not found"
+      content:
+        application/json:
+          schema:
+            type: "object"
+            properties:
+              message:
+                type: "string"
+                example: "internal server error"
+    badRequest:
+      description: "bad request error"
+      content:
+        application/json:
+          schema:
+            type: "object"
+            properties:
+              message:
+                type: "string"
+                example: "invalid request parameters"
+    notFound:
+      description: "not found error"
+      content:
+        application/json:
+          schema:
+            type: "object"
+            properties:
+              message:
+                type: "string"
+                example: "data not found"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
